@@ -310,3 +310,207 @@ for file in *.png; do
 done
 ```
 
+다음은 **“6. WebP 지원 이슈 및 대체 전략”**에 대한 실무 관점의 정리입니다. 브라우저 호환성 문제부터 Fallback 구현, 서버/빌드 시 고려사항까지 면접이나 스터디, 블로그에 바로 사용할 수 있도록 구성했습니다.
+
+⸻
+
+## 6. WebP 지원 이슈 및 대체 전략
+
+###  WebP 지원 현황 (2025 기준)
+- 지원 O: Chrome, Edge, Firefox, Safari 14+, Opera, Android Browser, 대부분의 Chromium 기반 브라우저
+- 지원 X:
+	- Internet Explorer 전 버전
+	- Safari 13 이하 (macOS, iOS 포함)
+	- 구형 Android WebView 일부 버전
+
+### 구버전 브라우저 대응 전략
+
+WebP가 지원되지 않는 환경에서는 **기존 포맷(JPEG, PNG)**을 자동으로 대체 제공하는 Fallback 전략이 필수다.
+
+- <picture> 태그를 통한 Fallback
+
+HTML5의 <picture> 태그는 브라우저가 지원하는 포맷을 자동으로 감지하여 출력하므로 가장 간편하고 직관적인 방식이다.
+
+```
+<picture>
+  <source srcset="banner.webp" type="image/webp">
+  <img src="banner.jpg" alt="배너 이미지">
+</picture>
+```
+- 지원 브라우저: WebP → source 출력
+- 비지원 브라우저: JPEG/PNG 등 → img 태그 출력
+
+> <img>는 항상 fallback 역할이므로 alt 텍스트도 꼭 포함해야 접근성(Accessibility)에 유리함.
+
+### Safari 구버전(13 이전) 대응
+ - iOS 13 미만, macOS Catalina 미만의 Safari는 WebP 미지원
+ - 이 경우에도 <picture> 방식으로 문제 해결 가능
+- 단, 앱 내 WebView나 하이브리드 앱은 시스템 Safari 버전에 따라 제한될 수 있음
+
+> 대안: iOS 버전 탐지 후 서버에서 JPEG 동적 서빙 or <noscript> 백업 이미지 제공
+
+### Polyfill 사용 여부
+
+예전에는 WebP 미지원 브라우저를 위해 JavaScript 기반 polyfill(예: Modernizr + JS 리렌더링) 사용이 고려됐지만, 2023년 이후에는 사실상 필요 없음.
+- 대부분의 주요 브라우저가 WebP를 기본 지원
+- <picture> 태그로 해결 가능
+- JS로 동적 렌더링 시 SEO, UX 불리
+
+> Polyfill은 유지/관리 복잡성 대비 효과가 크지 않으므로 사용 권장하지 않음.
+
+### 서버 & 빌드 대응 전략
+
+1. 서버 사이드 브라우저 감지 (Accept Header)
+
+브라우저는 요청 시 아래와 같은 Accept 헤더를 전송:
+```
+Accept: image/avif,image/webp,image/apng,image/*,*/*;q=0.8
+```
+- 서버에서 WebP를 지원하면 .webp 파일 응답
+- 지원하지 않으면 JPEG/PNG 응답 (fallback)
+
+실제 적용 사례:
+- Nginx + try_files 디렉티브
+- CDN (CloudFront, Cloudflare)에서 WebP 자동 감지 서빙
+
+2. 정적 사이트 빌드시 fallback 이미지 동시 생성
+- vite-imagetools, imagemin, gulp-webp 등을 사용해 .webp + .jpg 동시 출력
+- srcset, <picture>와 함께 연결
+
+### 실무 Best Practice 정리
+
+상황 | 전략
+--|--
+대부분의 웹 앱 | .webp + <picture> 태그 fallback
+SEO 민감한 서비스 | <picture> + 서버 감지 기반 WebP 서빙
+정적 사이트 빌드 | WebP + JPG/PNG 자동 생성 및 동시 배포
+WebView / 하이브리드 앱 | iOS 버전 탐지 및 조건부 fallback 제공
+JS 기반 polyfill | ❌ (사실상 필요 없음)
+
+다음은 **“7. WebP 이후의 대체 포맷 (미래 대비)”**에 대한 기술 트렌드 기반 심화 정리입니다. WebP 이후의 흐름을 이해하고, 앞으로의 이미지 포맷 도입 전략을 수립할 수 있도록 구성했습니다.
+
+## 7. WebP 이후의 대체 포맷 (미래 대비)
+
+WebP는 오랫동안 차세대 이미지 포맷의 표준처럼 활용되었지만, 더 높은 압축률과 기능 확장을 요구하는 흐름 속에서 AVIF와 JPEG XL이라는 새로운 포맷이 주목받고 있다.
+이들은 WebP의 단점을 보완하면서, 향후 웹 환경의 중심 포맷으로 자리 잡을 가능성이 있다.
+
+### AVIF (AV1 Image File Format)
+
+#### 개요
+- AV1 비디오 코덱 기반의 정적 이미지 포맷
+- Alliance for Open Media(AOMedia)에서 개발
+- .avif 확장자 사용
+
+#### 주요 특징
+- WebP보다 약 30~50% 더 높은 압축률 제공
+- 손실/무손실, 알파, HDR, 색심도(10bit), 와이드컬러 모두 지원
+- 최신 브라우저 및 OS에서 지원 확대 중
+
+#### 지원 현황 (2025 기준)
+- ✅ Chrome, Edge, Firefox (최근 버전)
+- ✅ Safari 16 이상 (iOS 16+, macOS Ventura+)
+- ❌ 일부 Android WebView, 구형 Windows 브라우저는 미지원
+
+#### 장점
+- 압축률 업계 최고 수준
+- HDR, 10bit, 와이드컬러 등 멀티미디어 대응 우수
+- Netflix, YouTube, Apple 등에서 점진적 도입 중
+
+#### 단점
+- 인코딩 속도가 매우 느림 (CPU 집약적)
+- 편집 도구, 라이브러리 생태계 미성숙
+- AV1 기반이기 때문에 하드웨어 디코딩 지원 필요
+
+> 실무 포인트: 초고화질 컨텐츠, 사진 서비스, 스트리밍 썸네일 등에 선제 적용 고려
+
+### JPEG XL
+
+#### 개요
+- 기존 JPEG의 한계를 극복하기 위한 차세대 이미지 표준
+- Google/Cloudinary/Swiss Federal Institute 주도
+- .jxl 확장자 사용
+
+#### 주요 특징
+- 기존 JPEG와의 backward compatibility: .jpg → .jxl로 변환하면 기존 JPEG decoder에서도 일부 정보 사용 가능
+- WebP2 프로젝트가 중단되며, JPEG XL이 사실상 계승 포맷이 됨
+
+#### 지원 현황 (2025 기준)
+- ✅ Firefox (실험적)
+- 🔶 Chrome: 실험 플래그에서 제거 후 재검토 논의 중
+- ❌ Safari 미지원
+- 
+> 일부 OS, 툴킷 지원은 시작되었지만 상용화 수준은 아님
+
+#### 장점
+- JPEG보다 60~70% 용량 감소
+- 16bit 색상, 무손실, 알파, 애니메이션, progressive rendering 지원
+- 전문가용 이미지, 프린트용 고해상도 등에서도 사용 가능
+
+#### 단점
+- 브라우저 지원이 불안정함
+- Web 생태계 내 tooling, CDN, 인코더 미성숙
+
+> 실무 포인트: 현재는 도입보다 기술 트렌드 관찰 및 보류 단계에 가까움
+
+### WebP vs AVIF vs JPEG XL 요약 비교
+
+항목 | WebP | AVIF | JPEG XL
+--|--|--|--
+기반 기술 | VP8 |	AV1 |	JPEG 계열
+손실/무손실 | 지원 | 지원 |	지원
+알파 지원 |지원 | 지원 | 지원
+애니메이션 | 지원 | 지원 | 지원
+압축률 | 보통 | 매우 우수 | 우수
+인코딩 속도 | 빠름 | 느림 | 중간
+브라우저 지원률 | 매우 높음 | 중간 → 증가 | 낮음
+실무 적용 난이도 | 쉬움 | 보통 |어려움
+도입 시점 | 현재 보편 | 차세대 선점 | 기술 검토 단계
+
+## 8. WebP 도입 시 고려사항
+
+WebP는 도입 자체는 간단하지만, 운영환경에서의 성능 극대화와 유지보수 효율을 위해 사전 고려할 항목이 많다. 단순히 포맷을 바꾸는 것을 넘어, SEO와 퍼포먼스, 브라우저 대응, 변환 전략까지 아울러야 효과를 극대화할 수 있다.
+
+### 이미지 포맷 혼용 관리 전략
+
+1. 전략적 포맷 혼용
+	- WebP는 대부분 대체 가능하지만, 특수한 상황에선 JPEG/PNG 유지 필요
+	- 픽셀 단위 디테일 요구 → PNG
+	- 편집 가능성 고려 → JPEG
+	- 브라우저 미지원 대응 → Fallback으로 JPEG/PNG 유지
+
+2. 폴더 구조 또는 네이밍 규칙 적용
+	- /images/webp/ vs /images/original/
+	- 또는 banner.webp, banner.jpg 형식으로 병행 관리
+
+3. 변환 자동화 및 빌드 파이프라인 통합
+	- vite-imagetools, imagemin-webp, webpack-image-loader
+	- 정적 사이트는 .webp + .jpg 동시 생성 및 <picture> 태그 대응
+
+### SEO 최적화: 이미지 대응
+
+#### srcset과 sizes 조합으로 Responsive 대응
+
+```
+<picture>
+  <source srcset="img@2x.webp 2x, img.webp 1x" type="image/webp">
+  <img src="img.jpg"
+       srcset="img@2x.jpg 2x, img.jpg 1x"
+       sizes="(max-width: 768px) 100vw, 50vw"
+       alt="SEO 대응 이미지">
+</picture>
+```
+
+	- 다양한 해상도 대응 (2x, 3x 등)
+	- 모바일/데스크탑별 최적 이미지 서빙 가능
+	- alt 태그는 접근성과 SEO 모두에 필수
+
+### 퍼포먼스 측정 방법
+
+도입 전/후 성능 비교를 통해 실제 개선 효과 확인 가능
+
+도구 | 측정 항목
+Lighthouse (Chrome) | LCP, FCP, CLS, 이미지 크기 확인
+PageSpeed Insights | WebP 사용 권장 여부, lazy load 제안
+Web Vitals | 실제 유저 데이터 기반 성능 지표
+
+> 변환 시점 이후에는 반드시 Lighthouse 보고서 스냅샷을 저장해 두고, 도입 효과를 시각적으로 비교
